@@ -39,38 +39,20 @@
     if (!hash || hash.length < 2) return null;
     try { return document.getElementById(decodeURIComponent(hash.slice(1))); } catch (_) { return null; }
   };
-  function captureReturn(trigger, source) {
-    return {
-      x: window.scrollX, y: window.scrollY, hash: location.hash,
-      focus: trigger instanceof HTMLElement && !opening.contains(trigger) ? trigger : null,
-      alignAnchor: source === 'load' && Boolean(hashTarget(location.hash))
-    };
-  }
+  let entered = false;
+  function captureReturn(trigger) { return { focus: trigger }; }
   function restoreDestination() {
-    const state = returnState;
-    if (!state || !restoreOnClose) return;
+    if (!restoreOnClose) return;
     cancelAnimationFrame(restoreFrame);
     restoreFrame = requestAnimationFrame(() => {
       if (opening.open || !restoreOnClose) return;
-      const sameHash = location.hash === state.hash;
-      const anchor = sameHash ? hashTarget(state.hash) : null;
-      const focusTarget = state.focus && state.focus.isConnected && state.focus !== document.body
-        ? state.focus : (anchor || primary);
-      if (focusTarget) {
-        if (focusTarget === anchor && !anchor.hasAttribute('tabindex')) {
-          anchor.setAttribute('tabindex', '-1');
-          anchor.addEventListener('blur', () => anchor.removeAttribute('tabindex'), { once: true });
-        }
-        focusTarget.focus({ preventScroll: true });
-      }
-      if (sameHash) {
-        let y = state.y;
-        if (state.alignAnchor && anchor) {
-          const header = document.querySelector('body > .topbar');
-          y = Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - (header?.offsetHeight || 0) - 18);
-        }
-        window.scrollTo({ left: state.x, top: y, behavior: 'instant' });
-      }
+      const directory = document.getElementById('directory');
+      if (!directory) return;
+      history.replaceState(history.state, '', '#directory');
+      directory.setAttribute('tabindex', '-1');
+      directory.focus({ preventScroll: true });
+      const header = document.querySelector('body > .topbar');
+      window.scrollTo({ top: Math.max(0, directory.getBoundingClientRect().top + scrollY - (header?.offsetHeight || 0) - 18), behavior: 'instant' });
     });
   }
   function finish(restore = true) {
@@ -80,6 +62,9 @@
     opening.removeAttribute('data-phase');
   }
   function start(trigger = document.activeElement, source = 'manual') {
+    if (opening.open) return;
+    if (entered) { restoreOnClose = true; restoreDestination(); return; }
+    entered = true;
     cancelAnimationFrame(restoreFrame);
     cancelMotion();
     if (!opening.open) returnState = captureReturn(trigger, source);
@@ -166,18 +151,14 @@
       }).catch(() => {});
     } catch (_) { finish(); }
   }
-  function queueEntry(source) {
-    pendingEntry = source;
-    cancelAnimationFrame(entryFrame);
-    if (document.visibilityState !== 'visible') return;
-    /* Let browser hash/BFCache scroll restoration settle before capturing it. */
-    entryFrame = requestAnimationFrame(() => {
-      entryFrame = requestAnimationFrame(() => {
-        const pending = pendingEntry;
-        pendingEntry = null;
-        if (pending && document.visibilityState === 'visible') start(document.activeElement, pending);
-      });
-    });
+  function resetHome() {
+    cancelAnimationFrame(restoreFrame);
+    finish(false);
+    entered = false;
+    history.scrollRestoration = 'manual';
+    history.replaceState(history.state, '', location.pathname + location.search);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
   }
   skip.addEventListener('click', () => finish());
   opening.addEventListener('cancel', event => { event.preventDefault(); finish(); });
@@ -187,40 +168,23 @@
     cancelMotion();
     restoreDestination();
   });
-  if (coverReplay) {
-    coverReplay.hidden = false;
-    coverReplay.addEventListener('click', () => start(coverReplay));
-  }
-  logo?.addEventListener('click', event => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (coverReplay) coverReplay.hidden = true;
+  const enter = event => {
+    if (event.defaultPrevented || (event.button != null && event.button !== 0) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
-    if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    start(logo);
-  });
+    event.stopPropagation();
+    start(event.currentTarget);
+  };
+  logo?.addEventListener('click', enter);
+  primary?.addEventListener('click', enter);
+  cover.querySelector('[data-home-enter]')?.addEventListener('click', enter);
   reduced.addEventListener?.('change', () => {
     if (reduced.matches && opening.open) finish();
   });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && pendingEntry) queueEntry(pendingEntry);
-    else if (document.visibilityState !== 'visible' && opening.open) finish(false);
-  });
   window.addEventListener('pagehide', () => {
-    pendingEntry = null;
-    cancelAnimationFrame(entryFrame);
     cancelAnimationFrame(restoreFrame);
     finish(false);
   });
-  window.addEventListener('pageshow', event => {
-    if (event.persisted || !initialEntryHandled) {
-      initialEntryHandled = true;
-      queueEntry(event.persisted ? 'bfcache' : 'load');
-    }
-  });
-  /* An in-document anchor change is navigation only, never a new opening. */
-  window.addEventListener('hashchange', () => { if (opening.open) finish(false); });
-  if (document.readyState === 'complete') {
-    initialEntryHandled = true;
-    queueEntry('load');
-  }
+  window.addEventListener('pageshow', resetHome);
+  resetHome();
 })();

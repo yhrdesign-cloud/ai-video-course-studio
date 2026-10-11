@@ -53,3 +53,6 @@
   /* JS bypasses the modal entirely, leaving the real homepage static. */
   .course-opening { display: none !important; }
 }
+
+.home-original-cover h1 [data-home-enter]{font:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;text-align:inherit;display:block;background:none;border:0;padding:0;cursor:pointer}
+.home-original-cover [data-home-opening-replay][hidden]{display:none}
