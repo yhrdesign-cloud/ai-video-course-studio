@@ -1,0 +1,55 @@
+/* Original v9 home composition. v6.css supplies its title, summary, and actions.
+   Only the first screen height changes; the directory remains normal document flow. */
+.index-page { --cover-header-height: 80px; }
+.home-introduction.home-original-cover {
+  min-height: calc(100vh - var(--cover-header-height));
+  min-height: calc(100svh - var(--cover-header-height));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.home-original-cover > .home-eyebrow,
+.home-original-cover > h1,
+.home-original-cover > .home-summary,
+.home-original-cover > .home-actions { flex-shrink: 0; }
+.index-page :is(a, button):focus-visible { outline: 3px solid #c4d09e; outline-offset: 6px; }
+@media (max-width:800px) { .index-page { --cover-header-height: 70px; } }
+
+/* Independent SVG implementation of overlapping circular mattes. */
+.course-opening:not([open]) { display: none; }
+.course-opening[open] { display: block; }
+.course-opening, .course-opening::backdrop { background: #FDFCFA; color: #0C0B0B; }
+.course-opening .opening-stage { background: #FDFCFA; contain: layout paint; }
+.course-opening .opening-skip {
+  min-height: 44px;
+  font-size: 15px;
+  color: #FDFCFA;
+  mix-blend-mode: difference;
+}
+.course-opening .opening-wait {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 2.77778vw;
+  height: auto;
+  transform: translate(-50%,-50%);
+}
+.course-opening .opening-art { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; }
+.course-opening .opening-art text {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  text-anchor: middle;
+  letter-spacing: -.035em;
+}
+.course-opening [data-opening-disc], .course-opening [data-opening-mask] { transform-box: view-box; transform: scale(0); }
+.course-opening [data-opening-text] { transform-box: view-box; }
+.course-opening [data-wait-ball] { transform-origin: 44px 30px; }
+.course-opening [data-wait-line] { transform-origin: 44px 134px; }
+@media (min-width:480px) and (max-width:991px) { .course-opening .opening-wait { width: 5.20833vw; } }
+@media (max-width:479px) {
+  .course-opening .opening-wait { width: 10.66667vw; }
+  .course-opening .opening-skip { top: 18px; right: 5vw; font-size: 14px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  /* JS bypasses the modal entirely, leaving the real homepage static. */
+  .course-opening { display: none !important; }
+}
